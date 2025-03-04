@@ -46,6 +46,16 @@ jobs:
           echo "REPO_NAME: $REPO_NAME"
 
 
+      # Verify ACR Exists
+      - name: Verify ACR Registry
+        run: |
+          az acr show --name $ACR_NAME --output table || echo "ACR does not exist!"
+
+      # Check ACR Health (optional)
+      - name: Check ACR Health
+        run: az acr check-health -n $ACR_NAME --yes
+
+      # Check if ACR Repository Exists
       - name: Check if ACR Repository Exists
         id: check-acr
         run: |
