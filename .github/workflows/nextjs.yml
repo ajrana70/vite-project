@@ -31,14 +31,14 @@ jobs:
         uses: docker/build-push-action@v6
         id: build-image
         env: 
-          ECR_REGISTRY: \${{ steps.prep.outputs.ECR_REGISTRY }}
-          ECR_REPOSITORY: \${{ steps.prep.outputs.ECR_REPOSITORY }}
+          ACR_REGISTRY: \${{ steps.prep.outputs.ACR_REGISTRY }}
+          ACR_REPOSITORY: \${{ steps.prep.outputs.ACR_REPOSITORY }}
           IMAGE_TAG: \${{ steps.prep.outputs.IMAGE_TAG }}
           CLUSTER: \${{ steps.prep.outputs.CLUSTER }}
           IMAGE_VERSION: \${{ steps.prep.outputs.IMAGE_VERSION }}
         with:
           push: true
-          tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest, ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.GIT_SHA }}
+          tags: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:latest, ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:${{ env.GIT_SHA }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
