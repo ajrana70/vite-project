@@ -35,6 +35,19 @@ jobs:
           echo "ACR_NAME=${ACR_NAME}" >> $GITHUB_ENV
           echo "REPO_NAME=${REPO_NAME}" >> $GITHUB_ENV
 
+          - name: Set Environment variables
+      id: prep
+      env:
+        AKS_CLUSTER: ${env}-${organisation}-aks-cluster
+        GIT_TOKEN: \${{ secrets.GH_TOKEN }}
+      run: |
+        echo "ACR_REGISTRY=${{ secrets.ACR_REGISTRY }}" >> $GITHUB_ENV
+        echo "ACR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_ENV
+        echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+        echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
+        echo "CLUSTER=${{ env.AKS_CLUSTER }}" >> $GITHUB_ENV
+        echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_ENV
+
       - name: Debug Environment Variables
         run: |
           echo "ACR_NAME: $ACR_NAME"
