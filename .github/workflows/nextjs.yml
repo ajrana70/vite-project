@@ -37,13 +37,14 @@ jobs:
 
       - name: Debug Environment Variables
         run: |
+          echo "ACR_NAME: $ACR_NAME"
           if [ -z "$ACR_NAME" ]; then
             echo "ACR_NAME is empty or not set!"
           else
             echo "ACR_NAME is set and available."
           fi
           echo "REPO_NAME: $REPO_NAME"
-        
+
 
       - name: Check if ACR Repository Exists
         id: check-acr
