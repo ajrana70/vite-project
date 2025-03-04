@@ -27,37 +27,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # - name: Set Environment Variables
-      #   env:
-      #     ACR_NAME: "${{ secrets.ACR_NAME }}"
-      #     REPO_NAME: ${{ github.event.repository.name }}
-      #   run: |
-      #     echo "ACR_NAME=${ACR_NAME}" >> $GITHUB_ENV
-      #     echo "REPO_NAME=${REPO_NAME}" >> $GITHUB_ENV
 
       - name: Set Environment variables
-      id: prep
-      env:
-        AKS_CLUSTER: ${env}-${organisation}-aks-cluster
-        GIT_TOKEN: \${{ secrets.GH_TOKEN }}
-      run: |
-        echo "ACR_REGISTRY=${{ secrets.ACR_REGISTRY }}" >> $GITHUB_ENV
-        echo "ACR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_ENV
-        echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-        echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
-        echo "CLUSTER=${{ env.AKS_CLUSTER }}" >> $GITHUB_ENV
-        echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_ENV
+        id: prep
+        env:
+           EKS_CLUSTER: dev-ajrana70-eks-cluster
+           GIT_TOKEN: \${{ secrets.GH_TOKEN }}
+         run: |
+           echo ::set-output name=ECR_REGISTRY::\${{ steps.login-ecr.outputs.registry }}
+           echo ::set-output name=ECR_REPOSITORY::\${{ github.event.repository.name }}
+           echo ::set-output name=IMAGE_TAG::\${{ github.ref_name }}
+           echo ::set-output name=IMAGE_VERSION::\${{ github.run_number }}
+           echo ::set-output name=CLUSTER::\${{ env.EKS_CLUSTER }}
+           echo ::set-output name=GIT_TOKEN::\${{ env.GIT_TOKEN }}
 
-      - name: Debug Environment Variables
-        run: |
-          echo "ACR_NAME: $ACR_NAME"
-          if [ -z "$ACR_NAME" ]; then
-            echo "ACR_NAME is empty or not set!"
-          else
-            echo "ACR_NAME is set and available."
-          fi
-          echo "REPO_NAME: $REPO_NAME"
 
+       - name: Build, tag, and push image to Amazon ECR
+         id: build-image
+         env:
+           ECR_REGISTRY: \${{ steps.prep.outputs.ECR_REGISTRY }}
+           ECR_REPOSITORY: \${{ steps.prep.outputs.ECR_REPOSITORY }}
+           IMAGE_TAG: \${{ steps.prep.outputs.IMAGE_TAG }}
+           CLUSTER: \${{ steps.prep.outputs.CLUSTER }}
+           IMAGE_VERSION: \${{ steps.prep.outputs.IMAGE_VERSION }}
 
       # Verify ACR Exists
       - name: Verify ACR Registry
