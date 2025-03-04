@@ -27,44 +27,37 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-
-      - name: Set Environment variables
+      - name: Set Environment Variables
         id: prep
-        env:
-           EKS_CLUSTER: dev-ajrana70-eks-cluster
-           GIT_TOKEN: \${{ secrets.GH_TOKEN }}
-         run: |
-           echo ::set-output name=ECR_REGISTRY::\${{ steps.login-ecr.outputs.registry }}
-           echo ::set-output name=ECR_REPOSITORY::\${{ github.event.repository.name }}
-           echo ::set-output name=IMAGE_TAG::\${{ github.ref_name }}
-           echo ::set-output name=IMAGE_VERSION::\${{ github.run_number }}
-           echo ::set-output name=CLUSTER::\${{ env.EKS_CLUSTER }}
-           echo ::set-output name=GIT_TOKEN::\${{ env.GIT_TOKEN }}
+        run: |
+          echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
+          echo "ECR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "CLUSTER=dev-ajrana70-eks-cluster" >> $GITHUB_ENV
+          echo "GIT_TOKEN=${{ secrets.GH_TOKEN }}" >> $GITHUB_ENV
 
-
-       - name: Build, tag, and push image to Amazon ECR
-         id: build-image
-         env:
-           ECR_REGISTRY: \${{ steps.prep.outputs.ECR_REGISTRY }}
-           ECR_REPOSITORY: \${{ steps.prep.outputs.ECR_REPOSITORY }}
-           IMAGE_TAG: \${{ steps.prep.outputs.IMAGE_TAG }}
-           CLUSTER: \${{ steps.prep.outputs.CLUSTER }}
-           IMAGE_VERSION: \${{ steps.prep.outputs.IMAGE_VERSION }}
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        run: |
+          echo "Building and pushing image..."
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
 
       # Verify ACR Exists
       - name: Verify ACR Registry
         run: |
-          az acr show --name $ACR_NAME --output table || echo "ACR does not exist!"
+          az acr show --name ${{ secrets.ACR_NAME }} --output table || echo "ACR does not exist!"
 
       # Check ACR Health (optional)
       - name: Check ACR Health
-        run: az acr check-health -n $ACR_NAME --yes
+        run: az acr check-health -n ${{ secrets.ACR_NAME }} --yes
 
       # Check if ACR Repository Exists
       - name: Check if ACR Repository Exists
         id: check-acr
         run: |
-          EXISTS=$(az acr repository list --name $ACR_NAME --query "contains(@, '$REPO_NAME')" -o tsv)
+          EXISTS=$(az acr repository list --name ${{ secrets.ACR_NAME }} --query "contains(@, '${{ env.ECR_REPOSITORY }}')" -o tsv)
           echo "Repository exists: $EXISTS"
           echo "REPO_EXISTS=$EXISTS" >> $GITHUB_ENV
 
@@ -72,12 +65,12 @@ jobs:
         if: env.REPO_EXISTS == 'false'
         run: |
           echo "Repository does not exist. Creating..."
-          az acr repository create --name $ACR_NAME --repository $REPO_NAME || echo "Repository creation skipped (not supported by ACR CLI)"
+          az acr repository create --name ${{ secrets.ACR_NAME }} --repository ${{ env.ECR_REPOSITORY }} || echo "Repository creation skipped (not supported by ACR CLI)"
 
       - name: Build and Push Docker Image
         run: |
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.REPO_NAME }}:latest .
-          docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.REPO_NAME }}:latest
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.ECR_REPOSITORY }}:latest .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.ECR_REPOSITORY }}:latest
 
       - name: Set AKS Context
         run: |
