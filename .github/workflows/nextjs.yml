@@ -30,29 +30,29 @@ jobs:
       - name: Log in to Azure Container Registry
         run: |
           echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
-          
-      - name: Set variables
-        run: |
-          echo "ACR_NAME=myacrname" >> $GITHUB_ENV   # Replace with your ACR name
-          echo "REPO_NAME=${{ github.event.repository.name }}" >> $GITHUB_ENV  # Use GitHub repo name
 
-      - name: Check if ACR repository exists
+      - name: Set Environment Variables
+        run: |
+          echo "ACR_NAME=${{ secrets.ACR_NAME }}" >> $GITHUB_ENV
+          echo "REPO_NAME=${{ github.event.repository.name }}" >> $GITHUB_ENV
+
+      - name: Check if ACR Repository Exists
         id: check-acr
         run: |
-          EXISTS=$(az acr repository list --name $ACR_NAME --query "contains(@, '$REPO_NAME')")
+          EXISTS=$(az acr repository list --name $ACR_NAME --query "contains(@, '$REPO_NAME')" -o tsv)
           echo "Repository exists: $EXISTS"
           echo "REPO_EXISTS=$EXISTS" >> $GITHUB_ENV
 
-      - name: Create ACR Repository (if not exists)
+      - name: Create ACR Repository if Not Exists
         if: env.REPO_EXISTS == 'false'
         run: |
           echo "Repository does not exist. Creating..."
-          az acr repository create --name $ACR_NAME --repository $REPO_NAME
+          az acr repository create --name $ACR_NAME --repository $REPO_NAME || echo "Repository creation skipped (not supported by ACR CLI)"
 
       - name: Build and Push Docker Image
         run: |
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/myapp:latest .
-          docker push ${{ secrets.ACR_LOGIN_SERVER }}/myapp:latest
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.REPO_NAME }}:latest .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.REPO_NAME }}:latest
 
       - name: Set AKS Context
         run: |
