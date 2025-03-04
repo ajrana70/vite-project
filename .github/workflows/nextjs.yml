@@ -29,6 +29,12 @@ jobs:
           az acr show --name ${{ secrets.ACR_NAME }} --query "id" --output tsv 2>/dev/null || \
           az acr create --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.ACR_NAME }} --sku Basic
 
+      - name: Get ACR Registry Name
+        id: get-acr
+        run: |
+          echo "ACR_REGISTRY=$(az acr show --name ${{ secrets.ACR_NAME }} --query "loginServer" --output tsv)" >> $GITHUB_ENV
+
+
       - name: Login to ACR
         run: |
           az acr login --name ${{ secrets.ACR_NAME }}
@@ -42,7 +48,7 @@ jobs:
           AKS_CLUSTER: dev-ajrana70-aks-cluster
           GIT_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          echo "ACR_REGISTRY=${{ steps.login-acr.outputs.registry }}" >> $GITHUB_ENV
+          # echo "ACR_REGISTRY=${{ steps.login-acr.outputs.registry }}" >> $GITHUB_ENV
           echo "ACR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_ENV
           echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
           echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
