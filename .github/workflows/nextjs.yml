@@ -35,7 +35,7 @@ jobs:
           echo "ACR_NAME=${ACR_NAME}" >> $GITHUB_ENV
           echo "REPO_NAME=${REPO_NAME}" >> $GITHUB_ENV
 
-          - name: Set Environment variables
+      - name: Set Environment variables
       id: prep
       env:
         AKS_CLUSTER: ${env}-${organisation}-aks-cluster
