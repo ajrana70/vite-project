@@ -49,6 +49,16 @@ jobs:
           echo "CLUSTER=${{ env.AKS_CLUSTER }}" >> $GITHUB_ENV
           echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_ENV
 
+      - name: Debug Environment Variables
+        run: |
+          echo "ACR_REGISTRY: $ACR_REGISTRY"
+          echo "ACR_REPOSITORY: $ACR_REPOSITORY"
+          echo "IMAGE_TAG: $IMAGE_TAG"
+          echo "IMAGE_VERSION: $IMAGE_VERSION"
+          echo "CLUSTER: $CLUSTER"
+          echo "GIT_TOKEN: [REDACTED]"  # Do not print secrets directly for security
+
+
       - name: Build and Push
         uses: docker/build-push-action@v6
         id: build-image
