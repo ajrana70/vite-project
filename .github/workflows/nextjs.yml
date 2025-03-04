@@ -37,7 +37,7 @@ jobs:
 
       - name: Debug Environment Variables
         run: |
-          echo "ACR_NAME: $ACR_NAME"
+          echo "ACR_NAME: ${{ secrets.ACR_NAME }}"
           if [ -z "$ACR_NAME" ]; then
             echo "ACR_NAME is empty or not set!"
           else
