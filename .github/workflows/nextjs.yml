@@ -27,13 +27,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Set Environment Variables
-        env:
-          ACR_NAME: "${{ secrets.ACR_NAME }}"
-          REPO_NAME: ${{ github.event.repository.name }}
-        run: |
-          echo "ACR_NAME=${ACR_NAME}" >> $GITHUB_ENV
-          echo "REPO_NAME=${REPO_NAME}" >> $GITHUB_ENV
+      # - name: Set Environment Variables
+      #   env:
+      #     ACR_NAME: "${{ secrets.ACR_NAME }}"
+      #     REPO_NAME: ${{ github.event.repository.name }}
+      #   run: |
+      #     echo "ACR_NAME=${ACR_NAME}" >> $GITHUB_ENV
+      #     echo "REPO_NAME=${REPO_NAME}" >> $GITHUB_ENV
 
       - name: Set Environment variables
       id: prep
