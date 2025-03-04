@@ -30,47 +30,18 @@ jobs:
       - name: Set Environment Variables
         id: prep
         run: |
-          echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
-          echo "ECR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_ENV
-          echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          echo "ACR_LOGIN_SERVER=${{ secrets.ACR_LOGIN_SERVER }}" >> $GITHUB_ENV
+          echo "ECR_REPOSITORY=$(echo '${{ github.event.repository.name }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$(echo '${{ github.ref_name }}' | tr '/' '-')" >> $GITHUB_ENV
           echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
-          echo "CLUSTER=dev-ajrana70-eks-cluster" >> $GITHUB_ENV
-          echo "GIT_TOKEN=${{ secrets.GH_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Build, tag, and push image to Amazon ECR
-        id: build-image
+      - name: Build and Push Docker Image to ACR
         run: |
-          echo "Building and pushing image..."
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} .
-          docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-
-      # Verify ACR Exists
-      - name: Verify ACR Registry
-        run: |
-          az acr show --name ${{ secrets.ACR_NAME }} --output table || echo "ACR does not exist!"
-
-      # Check ACR Health (optional)
-      - name: Check ACR Health
-        run: az acr check-health -n ${{ secrets.ACR_NAME }} --yes
-
-      # Check if ACR Repository Exists
-      - name: Check if ACR Repository Exists
-        id: check-acr
-        run: |
-          EXISTS=$(az acr repository list --name ${{ secrets.ACR_NAME }} --query "contains(@, '${{ env.ECR_REPOSITORY }}')" -o tsv)
-          echo "Repository exists: $EXISTS"
-          echo "REPO_EXISTS=$EXISTS" >> $GITHUB_ENV
-
-      - name: Create ACR Repository if Not Exists
-        if: env.REPO_EXISTS == 'false'
-        run: |
-          echo "Repository does not exist. Creating..."
-          az acr repository create --name ${{ secrets.ACR_NAME }} --repository ${{ env.ECR_REPOSITORY }} || echo "Repository creation skipped (not supported by ACR CLI)"
-
-      - name: Build and Push Docker Image
-        run: |
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.ECR_REPOSITORY }}:latest .
-          docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.ECR_REPOSITORY }}:latest
+          IMAGE_NAME="${{ env.ACR_LOGIN_SERVER }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+          echo "Building Docker image: $IMAGE_NAME"
+          
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
 
       - name: Set AKS Context
         run: |
