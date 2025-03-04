@@ -79,18 +79,3 @@ jobs:
           tags: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:latest, ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-
-      - name: Set AKS Context
-        run: |
-          az aks get-credentials --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --name ${{ secrets.AKS_CLUSTER_NAME }}
-
-      - name: Deploy to AKS
-        run: |
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
-
-      - name: Verify Deployment
-        run: |
-          kubectl get pods
-          kubectl get services
