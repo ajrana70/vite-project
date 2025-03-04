@@ -100,11 +100,11 @@ jobs:
         echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_ENV
 
     - name: Adding service configs repo
-         uses: actions/checkout@v2
-         with:
-           repository: 'ajrana70/devseccops-service-configs'
-           token: '\${{ secrets.GH_TOKEN }}'
-           path: devseccops-service-configs
-           ref: dev
+      uses: actions/checkout@v2
+      with:
+        repository: 'ajrana70/devseccops-service-configs'
+        token: ${{ secrets.GH_TOKEN }} 
+        path: devseccops-service-configs
+        ref: dev
 
 
