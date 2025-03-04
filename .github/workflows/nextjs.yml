@@ -28,15 +28,22 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Set Environment Variables
+        env:
+          ACR_NAME: ${{ secrets.ACR_NAME }}
+          REPO_NAME: ${{ github.event.repository.name }}
         run: |
-          echo "ACR_NAME=${{ secrets.ACR_NAME }}" >> $GITHUB_ENV
-          echo "REPO_NAME=${{ github.event.repository.name }}" >> $GITHUB_ENV
+          echo "ACR_NAME=${ACR_NAME}" >> $GITHUB_ENV
+          echo "REPO_NAME=${REPO_NAME}" >> $GITHUB_ENV
 
       - name: Debug Environment Variables
         run: |
-          echo "ACR_NAME: $ACR_NAME"
+          if [ -z "$ACR_NAME" ]; then
+            echo "ACR_NAME is empty or not set!"
+          else
+            echo "ACR_NAME is set and available."
+          fi
           echo "REPO_NAME: $REPO_NAME"
-
+        
 
       - name: Check if ACR Repository Exists
         id: check-acr
