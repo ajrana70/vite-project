@@ -36,11 +36,24 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Set Environment variables
+        id: prep
+        env:
+           AKS_CLUSTER: dev-ajrana70-aks-cluster
+           GIT_TOKEN: \${{ secrets.GH_TOKEN }}
+         run: |
+           echo ::set-output name=ACR_REGISTRY::\${{ steps.login-acr.outputs.registry }}
+           echo ::set-output name=ACR_REPOSITORY::\${{ github.event.repository.name }}
+           echo ::set-output name=IMAGE_TAG::\${{ github.ref_name }}
+           echo ::set-output name=IMAGE_VERSION::\${{ github.run_number }}
+           echo ::set-output name=CLUSTER::\${{ env.AKS_CLUSTER }}
+           echo ::set-output name=GIT_TOKEN::\${{ env.GIT_TOKEN }}
+
       - name: Build and push
         uses: docker/build-push-action@v6
         id: build-image
         env: 
-          ACR_REGISTRY: \${{ steps.prep.outputs.ACR_REGISTRY }}
+          ACR_REGISTRY: \${{ steps.prep.outputs.registry }}
           ACR_REPOSITORY: \${{ steps.prep.outputs.ACR_REPOSITORY }}
           IMAGE_TAG: \${{ steps.prep.outputs.IMAGE_TAG }}
           CLUSTER: \${{ steps.prep.outputs.CLUSTER }}
