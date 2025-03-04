@@ -26,7 +26,8 @@ jobs:
 
       - name: Create ACR (if not exists)
         run: |
-          az acr create --name ${{ secrets.ACR_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} --sku Basic --admin-enabled true || echo "ACR already exists"
+          az acr show --name ${{ secrets.ACR_NAME }} --query "id" --output tsv 2>/dev/null || \
+          az acr create --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.ACR_NAME }} --sku Basic
 
       - name: Login to ACR
         run: |
