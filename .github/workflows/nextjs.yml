@@ -29,7 +29,7 @@ jobs:
 
       - name: Set Environment Variables
         env:
-          ACR_NAME: dummy_acr_name
+          ACR_NAME: "${{ secrets.ACR_NAME }}"
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
           echo "ACR_NAME=${ACR_NAME}" >> $GITHUB_ENV
