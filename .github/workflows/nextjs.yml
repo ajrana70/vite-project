@@ -36,33 +36,37 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Set Environment variables
+            - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set Environment Variables
         id: prep
         env:
-           AKS_CLUSTER: dev-ajrana70-aks-cluster
-           GIT_TOKEN: \${{ secrets.GH_TOKEN }}
-         run: |
-           echo ::set-output name=ACR_REGISTRY::\${{ steps.login-acr.outputs.registry }}
-           echo ::set-output name=ACR_REPOSITORY::\${{ github.event.repository.name }}
-           echo ::set-output name=IMAGE_TAG::\${{ github.ref_name }}
-           echo ::set-output name=IMAGE_VERSION::\${{ github.run_number }}
-           echo ::set-output name=CLUSTER::\${{ env.AKS_CLUSTER }}
-           echo ::set-output name=GIT_TOKEN::\${{ env.GIT_TOKEN }}
+          AKS_CLUSTER: dev-ajrana70-aks-cluster
+          GIT_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          echo "ACR_REGISTRY=${{ steps.login-acr.outputs.registry }}" >> $GITHUB_ENV
+          echo "ACR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "CLUSTER=${{ env.AKS_CLUSTER }}" >> $GITHUB_ENV
+          echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Build and push
+      - name: Build and Push
         uses: docker/build-push-action@v6
         id: build-image
         env: 
-          ACR_REGISTRY: \${{ steps.prep.outputs.registry }}
-          ACR_REPOSITORY: \${{ steps.prep.outputs.ACR_REPOSITORY }}
-          IMAGE_TAG: \${{ steps.prep.outputs.IMAGE_TAG }}
-          CLUSTER: \${{ steps.prep.outputs.CLUSTER }}
-          IMAGE_VERSION: \${{ steps.prep.outputs.IMAGE_VERSION }}
+          ACR_REGISTRY: ${{ env.ACR_REGISTRY }}
+          ACR_REPOSITORY: ${{ env.ACR_REPOSITORY }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          CLUSTER: ${{ env.CLUSTER }}
+          IMAGE_VERSION: ${{ env.IMAGE_VERSION }}
         with:
           push: true
-          tags: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:latest, ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:${{ env.GIT_SHA }}
+          tags: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:latest, ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
 
       - name: Set AKS Context
         run: |
