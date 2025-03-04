@@ -20,9 +20,9 @@ jobs:
       - name: Log in to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: c6c0c8f4-30bf-410d-8fb1-2fec245d9a1f
+          tenant-id: d5feb418-4f7f-4736-ad94-78ab2311fb58
+          subscription-id: 51ae4afd-51e2-47a3-8f7d-04b5b40e49a8
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
