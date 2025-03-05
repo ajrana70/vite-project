@@ -20,7 +20,7 @@ RUN pip3 install --upgrade pip
 COPY . $DockerHOME
 
 # Run this command to install all dependencies
-RUN pip3 install -r requirements.txt
+# RUN pip3 install -r requirements.txt
 
 # RUN apt update
 # RUN apt-get update
