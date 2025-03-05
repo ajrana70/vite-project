@@ -1,0 +1,137 @@
+name:  Azure CI Pipeline prod AKS
+ 
+ on:
+   push:
+     branches: [ main ]
+   # Allows you to run this workflow manually from the Actions tab workflow_dispatch:
+ 
+ permissions:
+   id-token: write
+   contents: read
+ 
+ jobs:
+   build:
+     #runs-on: [self-hosted, deveks]
+     runs-on: ubuntu-latest
+     steps:
+       - name: Checkout Repository
+         uses: actions/checkout@v3
+
+      - name: Login in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create ACR (if not exists)
+        run: |
+          az acr show --name ${{ secrets.ACR_NAME }} --query "id" --output tsv 2>/dev/null ||           az acr create --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.ACR_NAME }} --sku Basic
+
+
+      - name: Get ACR Registry Name
+        id: get-acr
+        run: |
+          echo "ACR_REGISTRY=$(az acr show --name ${{ secrets.ACR_NAME }} --query "loginServer" --output tsv)" >> $GITHUB_ENV
+
+      - name: Login to ACR
+        run: |
+          az acr login --name ${{ secrets.ACR_NAME }}
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+ 
+      - name: Set Environment variables
+        id: prep
+        env:
+           AKS_CLUSTER: prod-ajrana70-aks-cluster
+           GIT_TOKEN: ${{ secrets.GH_TOKEN }}
+
+
+        run: |
+          # echo "ACR_REGISTRY=${{ steps.login-acr.outputs.registry }}" >> $GITHUB_ENV
+          echo "ACR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "CLUSTER=${{ env.AKS_CLUSTER }}" >> $GITHUB_ENV
+          echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_ENV
+
+         
+      - name: Debug Environment Variables
+        run: |
+          echo "ACR_REGISTRY: $ACR_REGISTRY"
+          echo "ACR_REPOSITORY: $ACR_REPOSITORY"
+          echo "IMAGE_TAG: $IMAGE_TAG"
+          echo "IMAGE_VERSION: $IMAGE_VERSION"
+          echo "CLUSTER: $CLUSTER"
+          echo "GIT_TOKEN: [REDACTED]"  # Do not print secrets directly for security
+
+       
+       - uses: actions/setup-java@v4
+         with:
+           java-version: "23"
+           distribution: "temurin"
+ 
+       - name: Setup Gradle
+         uses: gradle/actions/setup-gradle@v4
+         with:
+           gradle-version: "8.13"
+           
+       - name: Build, tag, and push image to Azure ACR
+         uses: docker/build-push-action@v6
+         id: build-image
+         env: 
+          ACR_REGISTRY: ${{ env.ACR_REGISTRY }}
+          ACR_REPOSITORY: ${{ env.ACR_REPOSITORY }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          CLUSTER: ${{ env.CLUSTER }}
+          IMAGE_VERSION: ${{ env.IMAGE_VERSION }}
+        with:
+          push: true
+          tags: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:latest, ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+ 
+   deploy:
+     #runs-on: [self-hosted, deveks]
+     runs-on: ubuntu-latest
+     needs: build
+     steps:
+       - name: Set Environment variables
+         id: prep
+         env:
+           GIT_TOKEN: ${{ secrets.GH_TOKEN }}
+         run: |
+           echo ::set-output name=ACR_REGISTRY::${{ steps.login-ecr.outputs.registry }}
+           echo ::set-output name=ECR_REPOSITORY::${{ github.event.repository.name }}
+           echo ::set-output name=IMAGE_TAG::${{ github.ref_name }}
+           echo ::set-output name=IMAGE_VERSION::${{ github.run_number }}
+           echo ::set-output name=CLUSTER::${{ env.EKS_CLUSTER }}
+           echo ::set-output name=GIT_TOKEN::${{ env.GIT_TOKEN }}
+       - name: Adding service configs repo
+         uses: actions/checkout@v2
+         with:
+           repository: 'ajrana70/ajrana70-service-configs'
+           token: '${{ secrets.GH_TOKEN }}'
+           path: ajrana70-service-configs
+           ref: prod
+       - name: deploy to prod EKS cluster
+         env:
+           ACR_REGISTRY: ${{ steps.prep.outputs.ACR_REGISTRY }}
+           ECR_REPOSITORY: ${{ steps.prep.outputs.ECR_REPOSITORY }}
+           IMAGE_TAG: ${{ steps.prep.outputs.IMAGE_TAG }}
+           IMAGE_VERSION: ${{ steps.prep.outputs.IMAGE_VERSION }}
+           CLUSTER: ${{ steps.prep.outputs.CLUSTER }}
+           GIT_TOKEN: ${{ steps.prep.outputs.GIT_TOKEN }}
+         run: |
+           cd ajrana70-service-configs
+           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+           yq --version
+           IMAGE=$IMAGE_TAG-$IMAGE_VERSION yq -i '.image.tag=strenv(IMAGE)' ${{ steps.prep.outputs.ECR_REPOSITORY }}/values.yaml
+           cat ${{ steps.prep.outputs.ECR_REPOSITORY }}/values.yaml
+       - uses: stefanzweifel/git-auto-commit-action@v4
+         with:
+           commit_message: "Updating ajrana70 values.yaml with image tag: ${{ steps.prep.outputs.IMAGE_TAG }}-${{ steps.prep.outputs.IMAGE_VERSION }}"
+           create_branch: true
+           branch: prod
+           repository: ./ajrana70-service-configs
