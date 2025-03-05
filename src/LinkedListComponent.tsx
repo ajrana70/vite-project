@@ -155,7 +155,7 @@ const PlaylistComponent: React.FC = () => {
       <div>
         <h3>Now Playing: {currentSong ? `${currentSong.title} by ${currentSong.artist}` : 'No song selected'}</h3>
         <button onClick={handlePrevious} disabled={!currentSong || !currentSong.prev}>
-          Previous
+          Previouss
         </button>
         <button onClick={handleNext} disabled={!currentSong || !currentSong.next}>
           Next
