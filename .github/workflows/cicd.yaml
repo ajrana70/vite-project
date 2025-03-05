@@ -1,4 +1,4 @@
-name:  Azure CI Pipeline prod AKS
+ name:  Azure CI Pipeline prod AKS
  
  on:
    push:
