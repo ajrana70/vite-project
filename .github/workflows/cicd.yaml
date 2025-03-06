@@ -92,3 +92,4 @@ jobs:
            tags: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:latest, ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:${{ github.sha }}
            cache-from: type=gha
            cache-to: type=gha,mode=max
+new_content
