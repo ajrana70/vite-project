@@ -125,16 +125,25 @@ jobs:
 
       - name: Deploy to main EKS cluster
         env:
-          ECR_REGISTRY: \${{ steps.prep.outputs.ECR_REGISTRY }}
-          ECR_REPOSITORY: \${{ steps.prep.outputs.ECR_REPOSITORY }}
-          IMAGE_TAG: \${{ steps.prep.outputs.IMAGE_TAG }}
-          IMAGE_VERSION: \${{ steps.prep.outputs.IMAGE_VERSION }}
-          CLUSTER: \${{ steps.prep.outputs.CLUSTER }}
-          GIT_TOKEN: \${{ steps.prep.outputs.GIT_TOKEN }}
+          ECR_REGISTRY: ${{ steps.prep.outputs.ECR_REGISTRY }}
+          ECR_REPOSITORY: ${{ steps.prep.outputs.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ steps.prep.outputs.IMAGE_TAG }}
+          IMAGE_VERSION: ${{ steps.prep.outputs.IMAGE_VERSION }}
+          CLUSTER: ${{ steps.prep.outputs.CLUSTER }}
+          GIT_TOKEN: ${{ steps.prep.outputs.GIT_TOKEN }}
         run: |
           cd  devseccops-service-configs
           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
           yq --version
+
+           # Debug: Print all environment variables
+          echo "ECR_REGISTRY: $ECR_REGISTRY"
+          echo "ECR_REPOSITORY: $ECR_REPOSITORY"
+          echo "IMAGE_TAG: $IMAGE_TAG"
+          echo "IMAGE_VERSION: $IMAGE_VERSION"
+          echo "CLUSTER: $CLUSTER"
+          echo "GIT_TOKEN: **** (masked for security)"
+
           IMAGE=$IMAGE_TAG-$IMAGE_VERSION yq -i '.image.tag=strenv(IMAGE)' \${{ steps.prep.outputs.ECR_REPOSITORY }}/values.yaml
           cat ${{ steps.prep.outputs.ECR_REPOSITORY }}/values.yaml
 
