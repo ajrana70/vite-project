@@ -90,27 +90,27 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-  runs-on: ubuntu-latest
-  needs: build
-  steps:
-    - name: Set Environment Variables
-      id: prep
-      env:
-        GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
-        EKS_CLUSTER: ${{ secrets.EKS_CLUSTER }} # Ensure it's set
-      run: |
-        echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
-        echo "ECR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_ENV
-        echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-        echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
-        echo "CLUSTER=${{ env.EKS_CLUSTER }}" >> $GITHUB_ENV
-        echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_ENV
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Set Environment Variables
+        id: prep
+        env:
+          GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+          EKS_CLUSTER: ${{ secrets.EKS_CLUSTER }} # Ensure it's set
+        run: |
+          echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
+          echo "ECR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "CLUSTER=${{ env.EKS_CLUSTER }}" >> $GITHUB_ENV
+          echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_ENV
 
-    - name: Debug Variables
-      run: |
-        echo "ECR_REGISTRY=$ECR_REGISTRY"
-        echo "ECR_REPOSITORY=$ECR_REPOSITORY"
-        echo "IMAGE_TAG=$IMAGE_TAG"
-        echo "IMAGE_VERSION=$IMAGE_VERSION"
-        echo "CLUSTER=$CLUSTER"
-        echo "GIT_TOKEN=******"  # Masked for security
+      - name: Debug Variables
+        run: |
+          echo "ECR_REGISTRY=$ECR_REGISTRY"
+          echo "ECR_REPOSITORY=$ECR_REPOSITORY"
+          echo "IMAGE_TAG=$IMAGE_TAG"
+          echo "IMAGE_VERSION=$IMAGE_VERSION"
+          echo "CLUSTER=$CLUSTER"
+          echo "GIT_TOKEN=******"  # Masked for security
