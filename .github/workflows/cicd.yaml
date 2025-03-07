@@ -136,7 +136,7 @@ jobs:
           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
           yq --version
           IMAGE=$IMAGE_TAG-$IMAGE_VERSION yq -i '.image.tag=strenv(IMAGE)' \${{ steps.prep.outputs.ECR_REPOSITORY }}/values.yaml
-          cat \${{ steps.prep.outputs.ECR_REPOSITORY }}/values.yaml
+          cat ${{ steps.prep.outputs.ECR_REPOSITORY }}/values.yaml
 
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
