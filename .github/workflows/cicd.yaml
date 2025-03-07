@@ -97,13 +97,13 @@ jobs:
         id: prep
         env:
           GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
-          EKS_CLUSTER: ${{ secrets.EKS_CLUSTER }} # Ensure it's set
+          AKS_CLUSTER: dev-1-ajrana70-aks-cluster
         run: |
           echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
           echo "ECR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_ENV
           echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
           echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
-          echo "CLUSTER=${{ env.EKS_CLUSTER }}" >> $GITHUB_ENV
+          echo "CLUSTER=${{ env.AKS_CLUSTER }}" >> $GITHUB_ENV
           echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_ENV
 
       - name: Debug Variables
