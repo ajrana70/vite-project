@@ -103,3 +103,10 @@ jobs:
         id: prep
         env: 
           GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+        run: |
+          echo ::set-output name=ECR_REGISTRY::\${{ steps.login-ecr.outputs.registry }}
+          echo ::set-output name=ECR_REPOSITORY::\${{ github.event.repository.name }}
+          echo ::set-output name=IMAGE_TAG::\${{ github.ref_name }}
+          echo ::set-output name=IMAGE_VERSION::\${{ github.run_number }}
+          echo ::set-output name=CLUSTER::\${{ env.EKS_CLUSTER }}
+          echo ::set-output name=GIT_TOKEN::\${{ env.GIT_TOKEN }}
