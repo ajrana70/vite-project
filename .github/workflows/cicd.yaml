@@ -99,12 +99,12 @@ jobs:
           GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
           AKS_CLUSTER: dev-1-ajrana70-aks-cluster
         run: |
-          echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
-          echo "ECR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_ENV
-          echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-          echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
-          echo "CLUSTER=${{ env.AKS_CLUSTER }}" >> $GITHUB_ENV
-          echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_ENV
+          echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_OUTPUT
+          echo "ECR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "CLUSTER=${{ env.AKS_CLUSTER }}" >> $GITHUB_OUTPUT
+          echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_OUTPUT
 
       - name: Debug Variables
         run: |
