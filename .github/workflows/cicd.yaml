@@ -137,10 +137,10 @@ jobs:
           yq --version
           IMAGE=$IMAGE_TAG-$IMAGE_VERSION yq -i '.image.tag=strenv(IMAGE)' \${{ steps.prep.outputs.ECR_REPOSITORY }}/values.yaml
           cat \${{ steps.prep.outputs.ECR_REPOSITORY }}/values.yaml
-          
+
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: "Updating ajrana70 values.yaml with image tag: \${{ steps.prep.outputs.IMAGE_TAG }}-\${{ steps.prep.outputs.IMAGE_VERSION }}"
+          commit_message: "Updating ajrana70 values.yaml with image tag: ${{ steps.prep.outputs.IMAGE_TAG }}-${{ steps.prep.outputs.IMAGE_VERSION }}"
           create_branch: true
           branch: stage
           repository: ./devseccops-service-configs
