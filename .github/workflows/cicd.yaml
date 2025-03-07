@@ -121,9 +121,9 @@ jobs:
           repository: ajrana70/devseccops-service-configs
           token: '${{ secrets.GIT_TOKEN }}'
           path: devseccops-service-configs
-          ref: stage
+          ref: main
 
-      - name: Deploy to stage EKS cluster
+      - name: Deploy to main EKS cluster
         env:
           ECR_REGISTRY: \${{ steps.prep.outputs.ECR_REGISTRY }}
           ECR_REPOSITORY: \${{ steps.prep.outputs.ECR_REPOSITORY }}
@@ -142,7 +142,7 @@ jobs:
         with:
           commit_message: "Updating ajrana70 values.yaml with image tag: ${{ steps.prep.outputs.IMAGE_TAG }}-${{ steps.prep.outputs.IMAGE_VERSION }}"
           create_branch: true
-          branch: main
+          branch: stage
           repository: ./devseccops-service-configs
 
       
