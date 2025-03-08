@@ -88,30 +88,4 @@ jobs:
           tags: ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:latest, ${{ env.ACR_REGISTRY }}/${{ env.ACR_REPOSITORY }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
- 
-  deploy:
-     run-on: ubuntu-latest
-     needs: build
-     steps:
-        - name: Set Environment Variables
-        id: prep
-        env:
-            GIT_TOKEN: \${{ secrets.GIT_TOKEN }}
-            AKS_CLUSTER: ${env}-${organisation}-aks-cluster
-        run: |
-            echo "ECR_REGISTRY=\${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_OUTPUT
-            echo "ECR_REPOSITORY=\${{ github.event.repository.name }}" >> $GITHUB_OUTPUT
-            echo "IMAGE_TAG=\${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "IMAGE_VERSION=\${{ github.run_number }}" >> $GITHUB_OUTPUT
-            echo "CLUSTER=\${{ env.AKS_CLUSTER }}" >> $GITHUB_OUTPUT
-            echo "GIT_TOKEN=\${{ env.GIT_TOKEN }}" >> $GITHUB_OUTPUT
 
-        - name: Debug Variables
-        run: |
-            echo "ECR_REGISTRY=$ECR_REGISTRY"
-            echo "ECR_REPOSITORY=$ECR_REPOSITORY"
-            echo "IMAGE_TAG=$IMAGE_TAG"
-            echo "IMAGE_VERSION=$IMAGE_VERSION"
-            echo "CLUSTER=$CLUSTER"
-            echo "GIT_TOKEN=******"  # Masked for security
-   
