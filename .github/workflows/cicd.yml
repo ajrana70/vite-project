@@ -81,7 +81,7 @@ jobs:
           gcloud container images list-tags $GCR_REGISTRY/$GCR_REPOSITORY --format="table(digest, tags, timestamp.datetime)"
 
   deploy:
-    runs-on: ubunutu-latest
+    runs-on: ubuntu-latest
     needs: build
     steps:
       - name: Set Environment Variables
