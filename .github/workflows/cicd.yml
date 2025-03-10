@@ -138,4 +138,4 @@ jobs:
           commit_message: "Updating ajrana70 values.yaml with image tag: ${{ steps.prep.outputs.IMAGE_TAG }}-${{ steps.prep.outputs.IMAGE_VERSION }}"
           create_branch: true
           branch: main
-          repository: .devseccops-service-configs
+          repository: ./devseccops-service-configs
