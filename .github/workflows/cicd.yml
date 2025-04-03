@@ -124,7 +124,7 @@ jobs:
           GIT_TOKEN: ${{ steps.prep.outputs.GIT_TOKEN }}
         run: |
           cd  devseccops-service-configs
-          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+          sudo wget https://github.cst/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
           yq --version
            # Debug: Print all environment variables
           echo "GCR_REGISTRY: $GCR_REGISTRY"
