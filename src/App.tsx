@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "./redux/store";
 import "./App.css"
 
-const App: React.FC = ({ text = "Success" }) => {
+const App: React.FC = ({ text = "Success asds" }) => {
 
 
   return (
