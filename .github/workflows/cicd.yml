@@ -3,30 +3,46 @@ name: Build and Push to prod1 GCR
 on:
   push:
     branches: [main]
-
   workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
 
+env:
+  API_ENDPOINT: https://4bbe-27-123-251-106.ngrok-free.app/api/pipeline-status  # Store your API URL in GitHub Secrets
+  PIPELINE_RUN_ID: ${{ github.run_id }}
+  API_TOKEN: ${{ secrets.API_TOKEN }}      # Optional: Add API token for security
+
 jobs:
   build:
-    # runs-on: [self-hosted, deveks]
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+      - name: Report Checkout Status
+        if: always()
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ env.API_TOKEN }}" \
+          -d '{"pipelineRunId":"${{ env.PIPELINE_RUN_ID }}","jobName":"build","stepName":"Checkout code","status":"${{ job.status }}","details":"Code checkout completed"}' \
+          ${{ env.API_ENDPOINT }}
 
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Report GCloud Auth Status
+        if: always()
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ env.API_TOKEN }}" \
+          -d '{"pipelineRunId":"${{ env.PIPELINE_RUN_ID }}","jobName":"build","stepName":"Authenticate with Google Cloud","status":"${{ job.status }}","details":"Google Cloud authentication completed"}' \
+          ${{ env.API_ENDPOINT }}
 
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
-
       - name: Configure Docker to use Google Cloud
         run: gcloud auth configure-docker gcr.io
 
@@ -34,23 +50,31 @@ jobs:
         run: |
           PROJECT_ID=$(gcloud config get-value project)
           REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
-
           if [[ -z "$PROJECT_ID" || -z "$REPO_NAME" ]]; then
             echo "Error: PROJECT_ID or REPO_NAME is empty!" >&2
             exit 1
           fi
-
           echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
           echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
-          echo "IMAGE_TAG=$/{{ github.sha }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
           echo "GCR_REGISTRY=gcr.io/$PROJECT_ID" >> $GITHUB_ENV
           echo "GCR_REPOSITORY=$REPO_NAME" >> $GITHUB_ENV
+      - name: Report Env Vars Status
+        if: always()
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ env.API_TOKEN }}" \
+          -d '{"pipelineRunId":"${{ env.PIPELINE_RUN_ID }}","jobName":"build","stepName":"Set Environment variables","status":"${{ job.status }}","details":"Environment variables set"}' \
+          ${{ env.API_ENDPOINT }}
 
       - name: Ensure GCR Repository Exists
         run: |
           if ! gcloud artifacts repositories describe $REPO_NAME --location=us-central1 >/dev/null 2>&1; then
             echo "Creating GCR repository: $REPO_NAME"
-            gcloud artifacts repositories create $REPO_NAME               --repository-format=docker               --location=us-central1               --description="GCR Repository for $REPO_NAME"
+            gcloud artifacts repositories create $REPO_NAME \
+              --repository-format=docker \
+              --location=us-central1 \
+              --description="GCR Repository for $REPO_NAME"
           else
             echo "GCR repository $REPO_NAME already exists."
           fi
@@ -71,14 +95,25 @@ jobs:
           IMAGE_NAME=gcr.io/$PROJECT_ID/${{ github.event.repository.name }}:latest
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
+      - name: Report Build and Push Status
+        if: always()
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ env.API_TOKEN }}" \
+          -d '{"pipelineRunId":"${{ env.PIPELINE_RUN_ID }}","jobName":"build","stepName":"Build and Push Docker Image","status":"${{ job.status }}","details":"Docker image built and pushed to GCR"}' \
+          ${{ env.API_ENDPOINT }}
 
       - name: Verify Image in GCR
         run: |
           echo "Checking if image exists in GCR..."
           gcloud container images list-tags $GCR_REGISTRY/$GCR_REPOSITORY --format="table(digest, tags, timestamp.datetime)"
-
-
- 
+      - name: Report Verify Image Status
+        if: always()
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ env.API_TOKEN }}" \
+          -d '{"pipelineRunId":"${{ env.PIPELINE_RUN_ID }}","jobName":"build","stepName":"Verify Image in GCR","status":"${{ job.status }}","details":"Image verification completed"}' \
+          ${{ env.API_ENDPOINT }}
 
   deploy:
     runs-on: ubuntu-latest
@@ -96,22 +131,20 @@ jobs:
           echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_OUTPUT
           echo "CLUSTER=${{ env.AKS_CLUSTER }}" >> $GITHUB_OUTPUT
           echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_OUTPUT
-
-      - name: Debug Variables
+      - name: Report Set Env Vars Status
+        if: always()
         run: |
-           echo "GCR_REGISTRY=$GCR_REGISTRY"
-           echo "GCR_REPOSITORY=$GCR_REPOSITORY"
-           echo "IMAGE_TAG=$IMAGE_TAG"
-           echo "IMAGE_VERSION=$IMAGE_VERSION"
-           echo "CLUSTER=$CLUSTER"
-           echo "GIT_TOKEN=******"  # Masked for security
-         
+          curl -X POST -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ env.API_TOKEN }}" \
+          -d '{"pipelineRunId":"${{ env.PIPELINE_RUN_ID }}","jobName":"deploy","stepName":"Set Environment Variables","status":"${{ job.status }}","details":"Deployment environment variables set"}' \
+          ${{ env.API_ENDPOINT }}
+
       - name: Adding service config repo
         uses: actions/checkout@v2
         with: 
           repository: ajrana70/devseccops-service-configs
           token: '${{ secrets.GIT_TOKEN }}'
-          path:  devseccops-service-configs
+          path: devseccops-service-configs
           ref: main
 
       - name: Deploy to prod1 EKS cluster
@@ -123,22 +156,27 @@ jobs:
           CLUSTER: ${{ steps.prep.outputs.CLUSTER }}
           GIT_TOKEN: ${{ steps.prep.outputs.GIT_TOKEN }}
         run: |
-          cd  devseccops-service-configs
+          cd devseccops-service-configs
           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
-          yq --version
-           # Debug: Print all environment variables
-          echo "GCR_REGISTRY: $GCR_REGISTRY"
-          echo "GCR_REPOSITORY: $GCR_REPOSITORY"
-          echo "IMAGE_TAG: $IMAGE_TAG"
-          echo "IMAGE_VERSION: $IMAGE_VERSION"
-          echo "CLUSTER: $CLUSTER"
-          echo "GIT_TOKEN: **** (masked for security)"
           IMAGE=$IMAGE_TAG-$IMAGE_VERSION yq -i '.image.tag=strenv(IMAGE)' ${{ steps.prep.outputs.GCR_REPOSITORY }}/values.yaml
-          cat ${{ steps.prep.outputs.GCR_REPOSITORY }}/values.yaml
+      - name: Report Deployment Status
+        if: always()
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ env.API_TOKEN }}" \
+          -d '{"pipelineRunId":"${{ env.PIPELINE_RUN_ID }}","jobName":"deploy","stepName":"Deploy to prod1 EKS cluster","status":"${{ job.status }}","details":"Deployment to EKS completed"}' \
+          ${{ env.API_ENDPOINT }}
+
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: "Updating ajrana70 values.yaml with image tag: ${{ steps.prep.outputs.IMAGE_TAG }}-${{ steps.prep.outputs.IMAGE_VERSION }}"
           create_branch: true
           branch: main
           repository: ./devseccops-service-configs
-   
+      - name: Report Git Commit Status
+        if: always()
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ env.API_TOKEN }}" \
+          -d '{"pipelineRunId":"${{ env.PIPELINE_RUN_ID }}","jobName":"deploy","stepName":"Git Auto Commit","status":"${{ job.status }}","details":"Configuration changes committed"}' \
+          ${{ env.API_ENDPOINT }}
