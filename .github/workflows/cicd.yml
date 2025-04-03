@@ -1,8 +1,9 @@
-name: Build and deploy in dev EKS
+name: Build and Push to prod1 GCR
 
 on:
   push:
     branches: [main]
+
   workflow_dispatch:
 
 permissions:
@@ -11,123 +12,133 @@ permissions:
 
 jobs:
   build:
+    # runs-on: [self-hosted, deveks]
     runs-on: ubuntu-latest
+
     steps:
-      - name: Notify Webhook - Checkout Started
-        run: |
-          curl -X POST -H "Content-Type: application/json" -d '{
-            "event": "step_started",
-            "step": "Checkout Code",
-            "status": "running",
-            "workflow": "${{ github.workflow }}",
-            "repository": "${{ github.repository }}",
-            "run_id": "${{ github.run_id }}"
-          }' https://4bbe-27-123-251-106.ngrok-free.app/v1/webhooks/github
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Notify Webhook - AWS Credentials Setup Started
-        run: |
-          curl -X POST -H "Content-Type: application/json" -d '{
-            "event": "step_started",
-            "step": "Configure AWS Credentials",
-            "status": "running",
-            "workflow": "${{ github.workflow }}",
-            "repository": "${{ github.repository }}",
-            "run_id": "${{ github.run_id }}"
-          }' https://4bbe-27-123-251-106.ngrok-free.app/v1/webhooks/github
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
         with:
-          role-to-assume: arn:aws:iam::130705418859:role/dev-devseccops-github-role
-          aws-region: ap-south-1
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Notify Webhook - Create ECR Repository Started
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Configure Docker to use Google Cloud
+        run: gcloud auth configure-docker gcr.io
+
+      - name: Set Environment variables
         run: |
-          curl -X POST -H "Content-Type: application/json" -d '{
-            "event": "step_started",
-            "step": "Create ECR Repository",
-            "status": "running",
-            "workflow": "${{ github.workflow }}",
-            "repository": "${{ github.repository }}",
-            "run_id": "${{ github.run_id }}"
-          }' https://4bbe-27-123-251-106.ngrok-free.app/v1/webhooks/github
+          PROJECT_ID=$(gcloud config get-value project)
+          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
 
-      - name: Create ECR repository
-        id: ECR
+          if [[ -z "$PROJECT_ID" || -z "$REPO_NAME" ]]; then
+            echo "Error: PROJECT_ID or REPO_NAME is empty!" >&2
+            exit 1
+          fi
+
+          echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$/{{ github.sha }}" >> $GITHUB_ENV
+          echo "GCR_REGISTRY=gcr.io/$PROJECT_ID" >> $GITHUB_ENV
+          echo "GCR_REPOSITORY=$REPO_NAME" >> $GITHUB_ENV
+
+      - name: Ensure GCR Repository Exists
         run: |
-          aws ecr describe-repositories --region ap-south-1 --repository-names ${{ github.event.repository.name }} || aws ecr create-repository --region ap-south-1 --repository-name ${{ github.event.repository.name }}
+          if ! gcloud artifacts repositories describe $REPO_NAME --location=us-central1 >/dev/null 2>&1; then
+            echo "Creating GCR repository: $REPO_NAME"
+            gcloud artifacts repositories create $REPO_NAME               --repository-format=docker               --location=us-central1               --description="GCR Repository for $REPO_NAME"
+          else
+            echo "GCR repository $REPO_NAME already exists."
+          fi
 
-      - name: Notify Webhook - Login to ECR Started
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "23"
+          distribution: "temurin"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.13"
+
+      - name: Build and Push Docker Image to GCR
         run: |
-          curl -X POST -H "Content-Type: application/json" -d '{
-            "event": "step_started",
-            "step": "Login to Amazon ECR",
-            "status": "running",
-            "workflow": "${{ github.workflow }}",
-            "repository": "${{ github.repository }}",
-            "run_id": "${{ github.run_id }}"
-          }' https://4bbe-27-123-251-106.ngrok-free.app/v1/webhooks/github
+          PROJECT_ID=$(gcloud config get-value project)
+          IMAGE_NAME=gcr.io/$PROJECT_ID/${{ github.event.repository.name }}:latest
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Notify Webhook - Build and Push Image Started
+      - name: Verify Image in GCR
         run: |
-          curl -X POST -H "Content-Type: application/json" -d '{
-            "event": "step_started",
-            "step": "Build and Push Docker Image",
-            "status": "running",
-            "workflow": "${{ github.workflow }}",
-            "repository": "${{ github.repository }}",
-            "run_id": "${{ github.run_id }}"
-          }' https://4bbe-27-123-251-106.ngrok-free.app/v1/webhooks/github
+          echo "Checking if image exists in GCR..."
+          gcloud container images list-tags $GCR_REGISTRY/$GCR_REPOSITORY --format="table(digest, tags, timestamp.datetime)"
 
-      - name: Build, tag, and push image to Amazon ECR
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ github.event.repository.name }}
-          IMAGE_TAG: ${{ github.ref_name }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+ 
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Notify Webhook - Deploy to Dev EKS Started
+      - name: Set Environment Variables
+        id: prep
+        env:
+          GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+          AKS_CLUSTER: prod1-ajrana70-aks-cluster
         run: |
-          curl -X POST -H "Content-Type: application/json" -d '{
-            "event": "step_started",
-            "step": "Deploy to Dev EKS Cluster",
-            "status": "running",
-            "workflow": "${{ github.workflow }}",
-            "repository": "${{ github.repository }}",
-            "run_id": "${{ github.run_id }}"
-          }' https://4bbe-27-123-251-106.ngrok-free.app/v1/webhooks/github
+          echo "GCR_REGISTRY=${{ steps.login-gke.outputs.registry }}" >> $GITHUB_OUTPUT
+          echo "GCR_REPOSITORY=${{ github.event.repository.name }}" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "IMAGE_VERSION=${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "CLUSTER=${{ env.AKS_CLUSTER }}" >> $GITHUB_OUTPUT
+          echo "GIT_TOKEN=${{ env.GIT_TOKEN }}" >> $GITHUB_OUTPUT
 
-      - name: Adding service configs repo
+      - name: Debug Variables
+        run: |
+           echo "GCR_REGISTRY=$GCR_REGISTRY"
+           echo "GCR_REPOSITORY=$GCR_REPOSITORY"
+           echo "IMAGE_TAG=$IMAGE_TAG"
+           echo "IMAGE_VERSION=$IMAGE_VERSION"
+           echo "CLUSTER=$CLUSTER"
+           echo "GIT_TOKEN=******"  # Masked for security
+         
+      - name: Adding service config repo
         uses: actions/checkout@v2
-        with:
-          repository: "devseccops/devseccops-service-configs"
-          token: "${{ secrets.GH_TOKEN }}"
-          path: devseccops-service-configs
-          ref: "dev"
+        with: 
+          repository: ajrana70/devseccops-service-configs
+          token: '${{ secrets.GIT_TOKEN }}'
+          path:  devseccops-service-configs
+          ref: main
 
-      - name: Deploy to Dev EKS Cluster
+      - name: Deploy to prod1 EKS cluster
+        env:
+          GCR_REGISTRY: ${{ steps.prep.outputs.GCR_REGISTRY }}
+          GCR_REPOSITORY: ${{ steps.prep.outputs.GCR_REPOSITORY }}
+          IMAGE_TAG: ${{ steps.prep.outputs.IMAGE_TAG }}
+          IMAGE_VERSION: ${{ steps.prep.outputs.IMAGE_VERSION }}
+          CLUSTER: ${{ steps.prep.outputs.CLUSTER }}
+          GIT_TOKEN: ${{ steps.prep.outputs.GIT_TOKEN }}
         run: |
-          cd devseccops-service-configs
+          cd  devseccops-service-configs
           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
-          IMAGE=${{ github.ref_name }} yq -i '.image.tag=strenv(IMAGE)' ${{ github.event.repository.name }}/values.yaml
-          cat ${{ github.event.repository.name }}/values.yaml
-
+          yq --version
+           # Debug: Print all environment variables
+          echo "GCR_REGISTRY: $GCR_REGISTRY"
+          echo "GCR_REPOSITORY: $GCR_REPOSITORY"
+          echo "IMAGE_TAG: $IMAGE_TAG"
+          echo "IMAGE_VERSION: $IMAGE_VERSION"
+          echo "CLUSTER: $CLUSTER"
+          echo "GIT_TOKEN: **** (masked for security)"
+          IMAGE=$IMAGE_TAG-$IMAGE_VERSION yq -i '.image.tag=strenv(IMAGE)' ${{ steps.prep.outputs.GCR_REPOSITORY }}/values.yaml
+          cat ${{ steps.prep.outputs.GCR_REPOSITORY }}/values.yaml
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: "Updating values.yaml with image tag: ${{ github.ref_name }}"
-          branch: dev
+          commit_message: "Updating ajrana70 values.yaml with image tag: ${{ steps.prep.outputs.IMAGE_TAG }}-${{ steps.prep.outputs.IMAGE_VERSION }}"
+          create_branch: true
+          branch: main
           repository: ./devseccops-service-configs
+   
