@@ -32,33 +32,72 @@ jobs:
       - uses: actions/checkout@v3
       - name: Docker Image Build
         run: echo "Running Docker Image Build"
+  code-linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Code Linting
+        run: echo "Running Code Linting"
+  branch-protection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Branch Protection
+        run: echo "Running Branch Protection"
+  pr-automation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: PR Automation
+        run: echo "Running PR Automation"
 
   docker-registry-push:
-    needs: [sonarqube-integration, unit-testing, integration-testing, docker-image-build]
+    needs: [sonarqube-integration, unit-testing, integration-testing, docker-image-build, code-linting, branch-protection, pr-automation]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Docker Registry Push
         run: echo "Running Docker Registry Push"
   staging-deployment:
-    needs: [sonarqube-integration, unit-testing, integration-testing, docker-image-build]
+    needs: [sonarqube-integration, unit-testing, integration-testing, docker-image-build, code-linting, branch-protection, pr-automation]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Staging Deployment
         run: echo "Running Staging Deployment"
+  production-deployment:
+    needs: [sonarqube-integration, unit-testing, integration-testing, docker-image-build, code-linting, branch-protection, pr-automation]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Production Deployment
+        run: echo "Running Production Deployment"
   deployment-notifications:
-    needs: [sonarqube-integration, unit-testing, integration-testing, docker-image-build]
+    needs: [sonarqube-integration, unit-testing, integration-testing, docker-image-build, code-linting, branch-protection, pr-automation]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Deployment Notifications
         run: echo "Running Deployment Notifications"
   artifact-management:
-    needs: [sonarqube-integration, unit-testing, integration-testing, docker-image-build]
+    needs: [sonarqube-integration, unit-testing, integration-testing, docker-image-build, code-linting, branch-protection, pr-automation]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Artifact Management
         run: echo "Running Artifact Management"
+  database-migration:
+    needs: [sonarqube-integration, unit-testing, integration-testing, docker-image-build, code-linting, branch-protection, pr-automation]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Database Migration
+        run: echo "Running Database Migration"
+  automated-rollback:
+    needs: [sonarqube-integration, unit-testing, integration-testing, docker-image-build, code-linting, branch-protection, pr-automation]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Automated Rollback
+        run: echo "Running Automated Rollback"
 
