@@ -1,6 +1,7 @@
 name: vite-new-project-3
 
 on:
+  workflow_dispatch: # Added for manual triggering
   push:
     branches: [ main ]
   pull_request:
