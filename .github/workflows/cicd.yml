@@ -22,4 +22,4 @@ jobs:
       - name: Run linter
         run: npm run lint
       - name: Print message
-        run: echo "Hello from GitHub Actions!"
+        run: echo "Hello from GitHub Actions edited!"
