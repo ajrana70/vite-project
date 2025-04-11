@@ -1,7 +1,6 @@
 name: Simple CI for Vite
 
 on:
-  workflow_dispatch: # Added for manual triggering
   push:
     branches:
       - main  # or whichever branch you prefer
@@ -24,6 +23,3 @@ jobs:
 
       - name: Print a custom log
         run: echo "🚀 Hello from CI! This is a Vite project."
-
-      - name: Optional - Build the project
-        run: npm run build
