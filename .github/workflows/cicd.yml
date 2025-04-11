@@ -1,35 +1,28 @@
-name: CI/CD Pipeline
+name: Simple CI for Vite
 
 on:
-  workflow_dispatch: # Added for manual triggering
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main  # or whichever branch you prefer
 
 jobs:
-
-  security:
+  print-log:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run security scan
-        run: npm audit
 
-  deploy_staging:
-    needs: [build_and_test]
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Deploy to staging
-        run: echo "Deploying to staging environment"
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-  deploy_production:
-    needs: [deploy_staging]
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Deploy to production
-        run: echo "Deploying to production environment"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Print a custom log
+        run: echo "🚀 Hello from CI! This is a Vite project."
+
+      - name: Optional - Build the project
+        run: npm run build
