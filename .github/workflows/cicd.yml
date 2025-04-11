@@ -1,6 +1,7 @@
 name: Simple CI for Vite
 
 on:
+  workflow_dispatch: # Added for manual triggering
   push:
     branches:
       - main  # or whichever branch you prefer
