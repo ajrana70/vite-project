@@ -1,17 +1,17 @@
 name: Simple CI for Vite
 
 on:
-  workflow_dispatch: # Added for manual triggering
   push:
     branches:
-      - main  # or whichever branch you prefer
+      - main
+  workflow_dispatch: # Optional manual trigger
 
 jobs:
-  print-log:
+  build-vite-project:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Setup Node.js
@@ -22,5 +22,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Print a custom log
-        run: echo "🚀 Hello from CI! This is a Vite project."
+      - name: Build Vite project
+        run: npm run build
+
+      - name: Print success log
+        run: echo "✅ Vite project built successfully!"

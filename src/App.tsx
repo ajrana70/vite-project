@@ -1,9 +1,11 @@
 import React from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState, AppDispatch } from "./redux/store";
 import "./App.css"
 
-const App: React.FC = ({ text = "Success" }) => {
+interface AppProps {
+  text?: string;
+}
+
+const App: React.FC<AppProps> = ({ text = "Success" }) => {
 
 
   return (

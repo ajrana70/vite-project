@@ -112,12 +112,7 @@ const iconStyle: React.CSSProperties = {
   marginLeft: '8px',
 };
 
-// Hover and Disabled State Styles
-const buttonHoverStyle: React.CSSProperties = {
-  backgroundColor: '#218838',
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-  transform: 'scale(1.05)',
-};
+
 
 const buttonDisabledStyle: React.CSSProperties = {
   backgroundColor: '#f0f0f0',

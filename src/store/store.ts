@@ -1,10 +1,9 @@
 // src/store/store.ts
 import { configureStore } from '@reduxjs/toolkit';
-import doublyLinkedListReducer from './doublyLinkedListSlice';
+// import doublyLinkedListReducer from './doublyLinkedListSlice';
 
 export const store = configureStore({
   reducer: {
-    doublyLinkedList: doublyLinkedListReducer,
   },
 });
 
