@@ -1,52 +1,85 @@
-name: Deploy to ECR
-
 on:
   push:
     branches:
       - main
-
 jobs:
-  deploy:
+  dependency-check:
     runs-on: ubuntu-latest
-    env:
-      REPO_NAME: vite-project
-      REGION: ap-south-1
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        env:
+          JAVA_HOME: /opt/jdk
+        with:
+          project: myorg-nodejs-project
+          scanPath: .
+          format: HTML
+          outDir: reports
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: reports/dependency-check-report.html
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Cache and install dependencies
+        run: |
+          npm install
+      - name: Unit Testing
+        run: npm run test
+  build:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.REGION }}
-
-      - name: Get AWS account ID
+          aws-region: ap-south-1
+      - name: Login to Amazon ECR
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
           echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV
-
-      - name: Create ECR repository if it doesn't exist
-        run: |
-          if ! aws ecr describe-repositories --region $REGION --repository-names $REPO_NAME --output text; then
-            aws ecr create-repository --region $REGION --repository-name $REPO_NAME --output text
-          fi
-          REPO_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME
+          REPO_URI=$ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com
           echo "REPO_URI=$REPO_URI" >> $GITHUB_ENV
-
-      - name: Login to ECR
+          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $REPO_URI
+      - name: Create ECR repository
         run: |
-          aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
-
+          REPO_NAME=vite-project
+          if ! aws ecr describe-repositories --region ap-south-1 --repository-names $REPO_NAME 2>/dev/null; then
+            aws ecr create-repository --region ap-south-1 --repository-name $REPO_NAME
+          fi
       - name: Build and push Docker image
         run: |
-          docker build -t $REPO_URI:latest .
-          docker tag $REPO_URI:latest $REPO_URI:$(git rev-parse --short HEAD)
-          docker push $REPO_URI:latest
-          docker push $REPO_URI:$(git rev-parse --short HEAD)
-
+          docker build -t $REPO_URI/vite-project:latest .
+          docker tag $REPO_URI/vite-project:latest $REPO_URI/vite-project:${GITHUB_SHA:0:7}
+          docker push $REPO_URI/vite-project:latest
+          docker push $REPO_URI/vite-project:${GITHUB_SHA:0:7}
       - name: Verify deployment
         run: |
-          echo "Docker image pushed to ECR repository: $REPO_URI"
+          docker images
+          echo "Deployment successful"
