@@ -1,4 +1,4 @@
-name: Deploy to Amazon ECR
+name: Deploy to ECR
 
 on:
   push:
@@ -8,43 +8,45 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    env:
+      REPO_NAME: vite-project
+      REGION: ap-south-1
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Login to Amazon ECR
-        uses: aws-actions/login@v1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: "ap-south-1" # Replace with your AWS region
+          aws-region: ${{ env.REGION }}
+
+      - name: Get AWS account ID
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
+          echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV
+
+      - name: Create ECR repository if it doesn't exist
+        run: |
+          if ! aws ecr describe-repositories --region $REGION --repository-names $REPO_NAME --output text; then
+            aws ecr create-repository --region $REGION --repository-name $REPO_NAME --output text
+          fi
+          REPO_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME
+          echo "REPO_URI=$REPO_URI" >> $GITHUB_ENV
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
 
       - name: Build and push Docker image
         run: |
-
-          # Get the account ID for the current AWS account
-          ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
-
-          # Get the ECR repository URL
-          REPO_URL=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-
-          # Login to Amazon ECR
-          aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${REPO_URL}
-
-          # Build the Docker image
-          docker build -t ${REPO_URL}/vite-project .
-
-          # Push the Docker image to ECR
-          docker push ${REPO_URL}/vite-project
+          docker build -t $REPO_URI:latest .
+          docker tag $REPO_URI:latest $REPO_URI:$(git rev-parse --short HEAD)
+          docker push $REPO_URI:latest
+          docker push $REPO_URI:$(git rev-parse --short HEAD)
 
       - name: Verify deployment
         run: |
-          echo "Docker image pushed to Amazon ECR"
-
-# To set the environment variables for the AWS region, add this to your workflow
-env:
-  AWS_REGION: "ap-south-1" # Replace with your AWS region
+          echo "Docker image pushed to ECR repository: $REPO_URI"
