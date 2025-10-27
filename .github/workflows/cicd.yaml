@@ -1,24 +1,55 @@
-name: SonarQube
+name: SonarQube Scan
+
 on:
   push:
     branches: [ "main" ]
+  pull_request:
+
 jobs:
   sonar:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
-      - uses: actions/setup-node@v3
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0   # Important for Sonar to find git history
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - run: npm install
-      - run: npm run build
+      - name: Install dependencies
+        run: npm ci
 
+      - name: Build Vite project
+        run: npm run build
+
+      # ✅ Debug step (does NOT print token)
+      - name: Debug Sonar variables
+        run: |
+          echo "SONAR_HOST_URL = $SONAR_HOST_URL"
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "❌ SONAR_TOKEN is missing"
+          else
+            echo "✅ SONAR_TOKEN is present (hidden)"
+          fi
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # ✅ Sonar Scan
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@v2
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # ✅ Quality Gate (optional but recommended)
+      - name: SonarQube Quality Gate
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
