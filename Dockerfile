@@ -1,32 +1,17 @@
-# Use multi-stage builds
-FROM node:20-alpine AS builder
+FROM node:18-alpine
 
-# Set working directory
+RUN apk add --no-cache aws-cli
+
 WORKDIR /app
 
-# Copy package.json and package-lock.json (or yarn.lock/pnpm-lock.yaml)
-COPY package.json ./
+COPY package*.json ./
 
-# Install dependencies
 RUN npm install
 
-# Copy source files
 COPY . .
 
-# Build the application
 RUN npm run build
 
-# Stage 2: Serve the application with nginx
-FROM nginx:alpine
+EXPOSE 5173
 
-# Copy the build output from the builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration (if you have one, otherwise use default)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port 80
-EXPOSE 80
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["sh", "startup.sh"]
