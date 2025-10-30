@@ -43,7 +43,7 @@ jobs:
       - name: Setup Node.js environment
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: 18
       - name: Install dependencies
         run: npm install
       - name: Unit Testing
@@ -70,7 +70,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
   build:
-    needs: [unit-testing, sonarqube-scan]
+    needs: [sonarqube-scan, unit-testing]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -87,21 +87,22 @@ jobs:
           echo "ACCOUNT_ID=$ACCOUNT_ID" >> $GITHUB_ENV
           REPO_URI=${ACCOUNT_ID}.dkr.ecr.ap-south-1.amazonaws.com
           echo "REPO_URI=$REPO_URI" >> $GITHUB_ENV
-          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $REPO_URI
+          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${REPO_URI}
       - name: Create ECR repository
         run: |
           REPO_NAME=${GITHUB_REPOSITORY##*/}
-          if ! aws ecr describe-repositories --region ap-south-1 --repository-names $REPO_NAME 2>/dev/null; then
-            aws ecr create-repository --region ap-south-1 --repository-name $REPO_NAME
+          if ! aws ecr describe-repositories --region ap-south-1 --repository-names ${REPO_NAME} 2>/dev/null; then
+            aws ecr create-repository --region ap-south-1 --repository-name ${REPO_NAME}
           fi
       - name: Build and push Docker image
         run: |
           REPO_NAME=${GITHUB_REPOSITORY##*/}
-          docker build -t $REPO_NAME .
-          docker tag $REPO_NAME:latest $REPO_URI/$REPO_NAME:latest
-          docker tag $REPO_NAME:latest $REPO_URI/$REPO_NAME:${GITHUB_SHA::7}
-          docker push $REPO_URI/$REPO_NAME:latest
-          docker push $REPO_URI/$REPO_NAME:${GITHUB_SHA::7}
+          REPO_URI=${ACCOUNT_ID}.dkr.ecr.ap-south-1.amazonaws.com
+          docker build -t ${REPO_NAME}:latest .
+          docker tag ${REPO_NAME}:latest ${REPO_URI}/${REPO_NAME}:latest
+          docker tag ${REPO_NAME}:latest ${REPO_URI}/${REPO_NAME}:${GITHUB_SHA:0:7}
+          docker push ${REPO_URI}/${REPO_NAME}:latest
+          docker push ${REPO_URI}/${REPO_NAME}:${GITHUB_SHA:0:7}
       - name: Verify deployment
         run: |
           docker images
