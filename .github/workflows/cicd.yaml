@@ -9,12 +9,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Setup Java
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
@@ -48,9 +48,30 @@ jobs:
         run: npm install
       - name: Unit Testing
         run: npm run test
-  build:
-    runs-on: ubuntu-latest
+  sonarqube-scan:
     needs: unit-testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install Dependencies
+        run: npm ci
+      - name: SonarQube Scan 
+        uses: sonarsource/sonarqube-scan-action@v6
+        with:
+          projectBaseDir: .
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+  build:
+    needs: [unit-testing, sonarqube-scan]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -76,10 +97,11 @@ jobs:
       - name: Build and push Docker image
         run: |
           REPO_NAME=${GITHUB_REPOSITORY##*/}
-          docker build -t $REPO_URI/$REPO_NAME:latest .
-          docker build -t $REPO_URI/$REPO_NAME:$GITHUB_SHA .
+          docker build -t $REPO_NAME .
+          docker tag $REPO_NAME:latest $REPO_URI/$REPO_NAME:latest
+          docker tag $REPO_NAME:latest $REPO_URI/$REPO_NAME:${GITHUB_SHA::7}
           docker push $REPO_URI/$REPO_NAME:latest
-          docker push $REPO_URI/$REPO_NAME:$GITHUB_SHA
+          docker push $REPO_URI/$REPO_NAME:${GITHUB_SHA::7}
       - name: Verify deployment
         run: |
           docker images
