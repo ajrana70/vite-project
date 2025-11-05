@@ -1,4 +1,4 @@
-name: build
+name: Build and Deploy to Amazon ECR
 on:
   push:
     branches:
@@ -40,11 +40,10 @@ jobs:
           path: reports/dependency-check-report.html
   unit-testing:
     runs-on: ubuntu-latest
-    needs: build
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Setup Node.js environment
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
@@ -60,8 +59,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::130705418859:role/ajeetsingh-ec2-full-access-role
+          audience: sts.amazonaws.com
           aws-region: ap-south-1
       - name: Login to Amazon ECR
         run: |
@@ -79,9 +78,8 @@ jobs:
       - name: Build and push Docker image
         run: |
           REPO_NAME=${GITHUB_REPOSITORY##*/}
-          docker build -t $REPO_NAME .
-          docker tag $REPO_NAME:latest $REPO_URI/$REPO_NAME:latest
-          docker tag $REPO_NAME:latest $REPO_URI/$REPO_NAME:${GITHUB_SHA:0:7}
+          docker build -t $REPO_URI/$REPO_NAME:latest .
+          docker tag $REPO_URI/$REPO_NAME:latest $REPO_URI/$REPO_NAME:${GITHUB_SHA:0:7}
           docker push $REPO_URI/$REPO_NAME:latest
           docker push $REPO_URI/$REPO_NAME:${GITHUB_SHA:0:7}
       - name: Verify deployment
@@ -89,8 +87,8 @@ jobs:
           docker images
           echo "Deployment successful"
   sonarqube-scan:
+    needs: [unit-testing, build]
     runs-on: ubuntu-latest
-    needs: [build, unit-testing]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
