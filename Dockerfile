@@ -1,6 +1,6 @@
 FROM node:18-alpine
 
-RUN apk add --no-cache aws-cli
+RUN apk add --no-cache aws-cli python3
 
 WORKDIR /app
 
