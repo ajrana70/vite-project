@@ -13,3 +13,5 @@ COPY . .
 RUN npm run build
 
 EXPOSE 5173
+
+ENTRYPOINT ["sh", "startup.sh"]
